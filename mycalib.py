@@ -13,7 +13,7 @@ from PyQt5.QtGui import QImage, QPixmap, QPainter,QDoubleValidator
 import time
 import Object_detect
 
-sys.stdout.flush()
+message = lambda x: print(x, flush=True, end="")
 #Config Variables - Enter their values according to your Checkerboard
 """
 F1,
@@ -56,7 +56,7 @@ class camera_realtimeXYZ:
 
         imgdir="/home/pi/Desktop/Captures/"
         savedir="camera_data/"
-        self.imageRec=Object_detect.image_recognition(True,False,imgdir,imgdir,False,False,True)
+        self.imageRec=Object_detect.image_recognition(False,False,imgdir,imgdir,False,False,True)
 
         #self.imageRec=image_recognition_singlecam.image_recognition(True,False,imgdir,imgdir,True,True)
         self.cam_mtx=None
@@ -68,6 +68,7 @@ class camera_realtimeXYZ:
         self.R_mtx=None
         self.Rt=None
         self.P_mtx=None
+        self.Angle=0
         s_arr=[0]
         try:
             s_arr=np.load('./output/s_arr.npy')
@@ -85,12 +86,13 @@ class camera_realtimeXYZ:
         self.newcam_mtx=new_camera_matrix
         self.roi=roi
 
-    def updatePara(self,rvec1,tvec1,R_mtx,Rt,P_mtx):
+    def updatePara(self,rvec1,tvec1,R_mtx,Rt,P_mtx,angle):
         self.rvec1=rvec1
         self.tvec1=tvec1
         self.R_mtx=R_mtx
         self.Rt=Rt
         self.P_mtx=P_mtx
+        self.Angle = angle
         #self.scalingfactor=s_arr[0]
         self.inverse_newcam_mtx = np.linalg.inv(self.newcam_mtx)
         self.inverse_R_mtx = np.linalg.inv(self.R_mtx)
@@ -140,16 +142,13 @@ class camera_realtimeXYZ:
                 cy=detected_points[i][5]
                 angle = detected_points[i][6]
                 if calcXYZ==True:
-                    XYZ.append(self.calculate_XYZ(cx,cy))
-                    inname = "X,Y: "+str(self.truncate(XYZ[i][0],2))+","+str(self.truncate(XYZ[i][1],2))
+                    XYZ.append(self.calculate_XYZ(cx,cy,angle))
+                    inname = "X,Y,A: "+str(self.truncate(XYZ[i][0],2))+", "+str(self.truncate(XYZ[i][1],2)) + ", "+str(self.truncate(XYZ[i][3]))
                     print("inname" , inname , flush=True)
-                    cv2.putText(img_output,inname,(int(x),int(y+60)),cv2.FONT_HERSHEY_SIMPLEX,1.5,(0,255,0),1, cv2.LINE_AA)
-                #if calcarea==True:
-                #    cv2.putText(img_output,"area: "+str(self.truncate(w*h,2)),(x,y-12),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),2)
-
+                    cv2.putText(img_output,inname,(int(x),int(y+40)),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),2, cv2.LINE_AA)
         return img_output, XYZ
 
-    def calculate_XYZ(self,u,v):
+    def calculate_XYZ(self,u,v,angle):
                                       
         #Solve: From Image Pixels, find World Points
         
@@ -159,7 +158,9 @@ class camera_realtimeXYZ:
         xyz_c=self.inverse_newcam_mtx.dot(suv_1)
         xyz_c=xyz_c-self.tvec1
         XYZ=self.inverse_R_mtx.dot(xyz_c)
-
+        angle = angle - self.Angle
+        b = np.array([[angle]])
+        XYZ = np.concatenate((XYZ, b), axis=0)
         return XYZ
 
 
@@ -227,11 +228,11 @@ class mycalib(QMainWindow):
 		if (ret): self.bg = self.cameraXYZ.undistort_image(frame)
 		self.initEvents() 
 		self.initUi()
-	
+
 	def initUi(self):
-		axes =   ['1X','1Y','2X','2Y','3X','3Y','4X','4Y','5X','5Y','6X','6Y','7X','7Y']
-		valueR = [0   , 0  , 147, 0  , 147, 189,   0, 189,   0, 105, 147, 105,  84, 105]
-		valuaP = [98.5,104.5,306.3,39.1,441.5,309.2,221.5,414.5,164.5,289.2,380,185.5,287.4,230.8]
+		axes =   ['1X' ,  '1Y',  '2X',  '2Y',   '3X',  '3Y',  '4X',  '4Y',  '5X',  '5Y', '6X',  '6Y',  '7X','7Y']
+		valueR = [0    ,     0,   147,   0  ,    147,   189,     0,   189,     0,   105,  147,   105,    84,  105]  # X,Y of Position for default
+		valuaP = [98.5 , 104.5, 306.3,  39.1,  441.5, 309.2, 221.5, 414.5, 164.5, 289.2,  380, 185.5, 287.4, 230.8] # X,Y of pixel for default
 		for axis in axes: 
 			getattr(self, 'lbl_Point' + axis).setValidator(QDoubleValidator())
 			getattr(self, 'lbl_RPoint' + axis).setValidator(QDoubleValidator())
@@ -305,8 +306,13 @@ class mycalib(QMainWindow):
 		Rt = np.load('./output/Rt.npy' )
 		P_mtx = np.load('./output/P_mtx.npy' )
 		s_arr = np.load('./output/s_arr.npy' )
+		try:
+			self.diffAng = np.load('./output/diffAng.npy' )
+		except Exception as e: 
+			self.diffAng = 0
+			np.save('./output/diffAng.npy', self.diffAng)
 		self.cameraXYZ.updateCamMtx(self.matrix,self.dist,self.new_camera_matrix,self.roi)
-		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx)
+		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx,self.diffAng)
 		self.cameraXYZ.updateArr(s_arr) 
 
 	def runTest(self):
@@ -320,7 +326,6 @@ class mycalib(QMainWindow):
 				self.id_counter = self.id_counter  + 1
 			if self.id_counter>20:
 				cv2.putText(image,"Picking",(20,20),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),2)
-				print("Trigger Arm")
 				self.id_counter=0
 			self.pixmap = self.imageToPixmap(image)
 			#run detection when on
@@ -448,19 +453,19 @@ class mycalib(QMainWindow):
 #########################################################################
 
 	def btn_detectpoints_Clicked(self):
-			#self.load_paramsyaml()
-			self.loadAllpara()
-			self.btn_addbg_Clicked()
-			if (self.capturing.t != 2):
-				self.capturing.t = 2
-			elif (self.capturing.t == 2):
-				self.capturing.t = 0
+		#self.load_paramsyaml()
+		self.loadAllpara()
+		self.btn_addbg_Clicked()
+		if (self.capturing.t != 2):
+			self.capturing.t = 2
+		elif (self.capturing.t == 2):
+			self.capturing.t = 0
 
 	def btn_cacRealWorld_Clicked(self):
 		self.loadAllpara()
 		pointX,pointY,Angle = float(self.lbl_calPointX.text()) , float(self.lbl_calPointY.text()), float(self.lbl_calAngle.text())
 		print("Caculator",pointX,pointY,flush=True)
-		XYZ = self.cameraXYZ.calculate_XYZ(pointX,pointY)
+		XYZ = self.cameraXYZ.calculate_XYZ(pointX,pointY,Angle)
 		AngleNew = Angle - self.diffAng
 		print("XYZ",XYZ,flush=True)
 		X = self.cameraXYZ.truncate(XYZ[0],2)
@@ -570,7 +575,10 @@ class mycalib(QMainWindow):
 		P_mtx=new_camera_matrix.dot(Rt)
 		s_arr=np.array([0], dtype=np.float32)
 		s_describe=np.array([0,0,0,0,0,0,0,0,0,0],dtype=np.float32)
-		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx)
+		angRobot = float(self.lbl_RAngle.text())
+		angObj = float(self.lbl_OAngle.text())
+		self.diffAng = angObj  - angRobot
+		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx,self.diffAng)
 		for i in range(0,total_points_used):
 			print("=======POINT # " + str(i) +" =========================",flush=True)
 			#print("Forward: From World Points, Find Image Pixel")
@@ -606,23 +614,23 @@ class mycalib(QMainWindow):
 			XYZ=inverse_R_mtx.dot(xyz_c)
 			print("XYZ",flush=True)
 			print(XYZ,flush=True)
-			cXYZ=self.cameraXYZ.calculate_XYZ(imagePoints[i,0],imagePoints[i,1])
+			cXYZ=self.cameraXYZ.calculate_XYZ(imagePoints[i,0],imagePoints[i,1],0)
 			print("WORLD OUT ",flush=True)
 			print(cXYZ,flush=True)
 
 		print("s_arr",s_arr,flush=True)
-		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx)
+
+		self.cameraXYZ.updatePara(rvec1,tvec1,R_mtx,Rt,P_mtx,self.diffAng)
 		self.cameraXYZ.updateArr(s_arr)
 
-		angRobot = float(self.lbl_RAngle.text())
-		angObj = float(self.lbl_OAngle.text())
-		self.diffAng = angObj  - angRobot
+
 		np.save('./output/rvec1.npy', rvec1)
 		np.save('./output/tvec1.npy', tvec1)
 		np.save('./output/R_mtx.npy', R_mtx)
 		np.save('./output/Rt.npy', Rt)
 		np.save('./output/P_mtx.npy', P_mtx)
 		np.save('./output/s_arr.npy', s_arr)
+		np.save('./output/diffAng.npy', self.diffAng)
 
 		result_file = "./output/realCamera.yaml"
 		data={"rvec1": rvec1,"tvec1": tvec1, "R_mtx": R_mtx, "Rt": Rt, "P_mtx": P_mtx, "s_arr": s_arr}

@@ -111,17 +111,11 @@ class image_recognition:
                 self.printStatus("x: "+str(x)+" y: "+str(y)+" w: "+str(w)+" h: "+str(h))
 
                 cv2.drawContours(img_output, [box],0,(255,0,0),2)
-
-                #draw retangle
-                #cv2.rectangle(img_output,(x,y),(x+w,y+h),(0,255,0),2)
-                #draw center
                 cv2.circle(img_output,(cx,cy),3,(0,255,0),2)
 
                 if self.PRINT_IMG_LABELS ==True:
-                    cv2.putText(img_output,"Point "+str(i),(int(x),int(y)),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255),1, cv2.LINE_AA)
-                    cv2.putText(img_output,"X: {:0.2f}".format(x),(int(x),int(y) + 15), cv2.FONT_HERSHEY_SIMPLEX , 1, (0, 0, 255), 1, cv2.LINE_AA)
-                    cv2.putText(img_output,"Y: {:0.2f} ".format(y),(int(x),int(y) + 30), cv2.FONT_HERSHEY_SIMPLEX , 1.5, (0, 0, 255), 1, cv2.LINE_AA)
-                    cv2.putText(img_output,"Angle {:0.2f}".format(angle),(int(x),int(y) + 45), cv2.FONT_HERSHEY_SIMPLEX , 1.5, (0, 0, 255), 1, cv2.LINE_AA)
+                    #cv2.putText(img_output,"Point "+str(i),(int(x),int(y)),cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,0,255),2, cv2.LINE_AA)
+                    cv2.putText(img_output,"XYA: {:0.2f}, {:0.2f}, {:0.2f}".format(x,y,angle),(int(x),int(y)), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (0, 0, 255), 2, cv2.LINE_AA)
                 
                 points=[float(x),float(y),float(w),float(h),cx,cy,float(angle)]
                 detected_points.append(points)
