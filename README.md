@@ -12,11 +12,11 @@ These are the files/code of my camera calib using OpenCV-Python. These code file
 Calib matrixes, dist of camera from CHESSBOARD
 
 - Start Button : enable calib
-- Detect Corners: enable Corners
+- Detect Corners: enable Corners detect
 - IGNORE: IGNORE image
 - CONFIRM: use image 
-- Done : begin calib with num images take from camera
-- 
+- Done : calib with num images take from camera
+
 
 ![1](https://user-images.githubusercontent.com/8399429/151115641-098ccaf0-71aa-48af-b2de-05516ff4b569.png)
 
@@ -26,8 +26,8 @@ Calib matrixes, dist of camera from CHESSBOARD
 - Use 7 points
 - Step1: calculator position of points from realworld 
 - Step2: calculator position of points from pixel
-- detect points to help detecting a object pixel,which will help to step2
-- Button calib: calib function
+- detect points Button: detecting a object pixel position,which will help to step2
+- calib Button: calib function
 
 
 https://user-images.githubusercontent.com/8399429/151115533-a7619e86-1f6d-4f67-b3ca-3fdaae69a345.mp4
