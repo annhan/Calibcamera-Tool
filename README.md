@@ -22,13 +22,12 @@ Calib matrixes, dist of camera from CHESSBOARD
 
 # tab Calib World 
 
-- Calib real world (Just XY ) from  pixel
+- Calib real world (Just XY ) from  pixels position
 - Use 7 points
-- Step1: caculator position points from realworld 
-- Step2: caculator position points from pixel
-
+- Step1: calculator position of points from realworld 
+- Step2: calculator position of points from pixel
 - detect points to help detecting a object pixel,which will help to step2
-- calib Button to calib function
+- Button calib: calib function
 
 
 https://user-images.githubusercontent.com/8399429/151115533-a7619e86-1f6d-4f67-b3ca-3fdaae69a345.mp4
